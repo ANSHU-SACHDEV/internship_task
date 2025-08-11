@@ -6,7 +6,7 @@ const bodyParser = require("body-parser");
 const db = require("./db");
 
 const app = express();
-const port =process.env.PORT || 8080;
+const port = process.env.PORT || 8080;
 
 app.engine("ejs", engine);
 app.set("views", __dirname + "/views");
@@ -15,13 +15,17 @@ app.set("view engine", "ejs");
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true })); 
 
+// --- Added root route to avoid "Cannot GET /" on Railway ---
+app.get("/", (req, res) => {
+  res.send("School API is running. Use POST /addSchool or GET /listSchools.");
+});
+
 app.get("/addSchool", (req, res) => {
   res.render("addSchool.ejs");
 });
 
 app.post("/addSchool", async (req, res) => {
   const { name, address, latitude, longitude } = req.body;
-
 
   if (!name || !address || latitude === undefined || longitude === undefined) {
     return res.status(400).json({ error: "All fields are required" });
@@ -42,7 +46,6 @@ app.post("/addSchool", async (req, res) => {
   }
 });
 
-
 app.get("/listSchools", async (req, res) => {
   const userLat = parseFloat(req.query.latitude);
   const userLon = parseFloat(req.query.longitude);
@@ -54,13 +57,11 @@ app.get("/listSchools", async (req, res) => {
   try {
     const [rows] = await db.execute("SELECT * FROM schools");
 
-   
     const schoolsWithDistance = rows.map((school) => {
       const distance = getDistance(userLat, userLon, school.latitude, school.longitude);
       return { ...school, distance };
     });
 
-   
     schoolsWithDistance.sort((a, b) => a.distance - b.distance);
 
     res.json(schoolsWithDistance);
@@ -69,7 +70,6 @@ app.get("/listSchools", async (req, res) => {
     res.status(500).json({ error: "Database error" });
   }
 });
-
 
 function getDistance(lat1, lon1, lat2, lon2) {
   const R = 6371;
